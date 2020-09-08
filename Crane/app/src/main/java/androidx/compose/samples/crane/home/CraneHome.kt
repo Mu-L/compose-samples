@@ -16,8 +16,9 @@
 
 package androidx.compose.samples.crane.home
 
-import androidx.compose.foundation.layout.Column
+import androidx.compose.material.BackdropScaffold
 import androidx.compose.material.DrawerValue
+import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.ModalDrawerLayout
 import androidx.compose.material.rememberDrawerState
 import androidx.compose.runtime.Composable
@@ -31,7 +32,6 @@ import androidx.compose.samples.crane.base.CraneTabBar
 import androidx.compose.samples.crane.base.CraneTabs
 import androidx.compose.samples.crane.base.ExploreSection
 import androidx.compose.samples.crane.data.ExploreModel
-import androidx.compose.samples.crane.ui.BackdropFrontLayer
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.viewModel
 
@@ -63,6 +63,7 @@ fun CraneHome(
     )
 }
 
+@OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun CraneHomeContent(
     onExploreItemClicked: OnExploreItemClicked,
@@ -76,26 +77,26 @@ fun CraneHomeContent(
     val onPeopleChanged: (Int) -> Unit = { viewModel.updatePeople(it) }
     var tabSelected by remember { mutableStateOf(CraneScreen.Fly) }
 
-    BackdropFrontLayer(
+    BackdropScaffold(
         modifier = modifier,
-        staticChildren = { staticModifier ->
-            Column(modifier = staticModifier) {
-                HomeTabBar(openDrawer, tabSelected, onTabSelected = { tabSelected = it })
-                SearchContent(
-                    tabSelected,
-                    viewModel,
-                    onPeopleChanged,
-                    onDateSelectionClicked,
-                    onExploreItemClicked
-                )
-            }
+        appBar = {
+            HomeTabBar(openDrawer, tabSelected, onTabSelected = { tabSelected = it })
         },
-        backdropChildren = { backdropModifier ->
+        backLayerContent = {
+            SearchContent(
+                tabSelected,
+                viewModel,
+                onPeopleChanged,
+                onDateSelectionClicked,
+                onExploreItemClicked
+            )
+        },
+        frontLayerContent = {
             when (tabSelected) {
                 CraneScreen.Fly -> {
                     suggestedDestinations?.let { destinations ->
                         ExploreSection(
-                            modifier = backdropModifier,
+                            modifier = Modifier, // backdropModifier,
                             title = "Explore Flights by Destination",
                             exploreList = destinations,
                             onItemClicked = onExploreItemClicked
@@ -104,7 +105,7 @@ fun CraneHomeContent(
                 }
                 CraneScreen.Sleep -> {
                     ExploreSection(
-                        modifier = backdropModifier,
+                        modifier = Modifier, // backdropModifier,
                         title = "Explore Properties by Destination",
                         exploreList = viewModel.hotels,
                         onItemClicked = onExploreItemClicked
@@ -112,7 +113,7 @@ fun CraneHomeContent(
                 }
                 CraneScreen.Eat -> {
                     ExploreSection(
-                        modifier = backdropModifier,
+                        modifier = Modifier, // backdropModifier,
                         title = "Explore Restaurants by Destination",
                         exploreList = viewModel.restaurants,
                         onItemClicked = onExploreItemClicked
@@ -121,6 +122,19 @@ fun CraneHomeContent(
             }
         }
     )
+
+//    BackdropFrontLayer(
+//        modifier = modifier,
+//        staticChildren = { staticModifier ->
+//            Column(modifier = staticModifier) {
+//
+//
+//            }
+//        },
+//        backdropChildren = { backdropModifier ->
+//
+//        }
+//    )
 }
 
 @Composable
