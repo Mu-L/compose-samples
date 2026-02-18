@@ -14,61 +14,87 @@
  * limitations under the License.
  */
 
+@file:OptIn(ExperimentalMaterial3Api::class)
+
 package com.example.compose.jetchat.conversation
 
-import androidx.compose.foundation.ClickableText
-import androidx.compose.foundation.Icon
+import android.content.ClipDescription
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.ScrollState
-import androidx.compose.foundation.ScrollableColumn
-import androidx.compose.foundation.Text
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.draganddrop.dragAndDropTarget
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope.weight
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope.align
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.Stack
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.exclude
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.preferredHeight
-import androidx.compose.foundation.layout.preferredSize
-import androidx.compose.foundation.layout.preferredWidth
-import androidx.compose.foundation.layout.relativePaddingFrom
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.paddingFrom
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.LastBaseline
-import androidx.compose.material.Divider
-import androidx.compose.material.EmphasisAmbient
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.ProvideEmphasis
-import androidx.compose.material.Surface
+import androidx.compose.foundation.text.ClickableText
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material3.Divider
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScaffoldDefaults
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TopAppBarScrollBehavior
+import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draganddrop.DragAndDropEvent
+import androidx.compose.ui.draganddrop.DragAndDropTarget
+import androidx.compose.ui.draganddrop.mimeTypes
+import androidx.compose.ui.draganddrop.toAndroidDragEvent
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.DensityAmbient
-import androidx.compose.ui.platform.UriHandlerAmbient
-import androidx.compose.ui.res.imageResource
+import androidx.compose.ui.layout.LastBaseline
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.accessibilityLabel
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.ui.tooling.preview.Preview
+import com.example.compose.jetchat.FunctionalityNotAvailablePopup
 import com.example.compose.jetchat.R
 import com.example.compose.jetchat.components.JetchatAppBar
 import com.example.compose.jetchat.data.exampleUiState
 import com.example.compose.jetchat.theme.JetchatTheme
-import com.example.compose.jetchat.theme.elevatedSurface
+import kotlinx.coroutines.launch
 
 /**
  * Entry point for a conversation screen.
@@ -78,6 +104,7 @@ import com.example.compose.jetchat.theme.elevatedSurface
  * @param modifier [Modifier] to apply to this layout node
  * @param onNavIconPressed Sends an event up when the user clicks on the menu
  */
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun ConversationContent(
     uiState: ConversationUiState,
@@ -88,145 +115,239 @@ fun ConversationContent(
     val authorMe = stringResource(R.string.author_me)
     val timeNow = stringResource(id = R.string.now)
 
-    val scrollState = rememberScrollState()
-    Surface(modifier = modifier) {
-        Stack(modifier = Modifier.fillMaxSize()) {
-            Column(Modifier.fillMaxSize()) {
-                Messages(
-                    messages = uiState.messages,
-                    navigateToProfile = navigateToProfile,
-                    modifier = Modifier.weight(1f),
-                    scrollState = scrollState
+    val scrollState = rememberLazyListState()
+    val topBarState = rememberTopAppBarState()
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(topBarState)
+    val scope = rememberCoroutineScope()
+
+    var background by remember {
+        mutableStateOf(Color.Transparent)
+    }
+
+    var borderStroke by remember {
+        mutableStateOf(Color.Transparent)
+    }
+
+    val dragAndDropCallback = remember {
+        object : DragAndDropTarget {
+            override fun onDrop(event: DragAndDropEvent): Boolean {
+                val clipData = event.toAndroidDragEvent().clipData
+
+                if (clipData.itemCount < 1) {
+                    return false
+                }
+
+                uiState.addMessage(
+                    Message(authorMe, clipData.getItemAt(0).text.toString(), timeNow)
                 )
-                UserInput(
-                    onMessageSent = { content ->
-                        uiState.addMessage(
-                            Message(authorMe, content, timeNow)
-                        )
-                    },
-                    scrollState
-                )
+
+                return true
             }
-            // Channel name bar floats above the messages
+
+            override fun onStarted(event: DragAndDropEvent) {
+                super.onStarted(event)
+                borderStroke = Color.Red
+            }
+
+            override fun onEntered(event: DragAndDropEvent) {
+                super.onEntered(event)
+                background = Color.Red.copy(alpha = .3f)
+            }
+
+            override fun onExited(event: DragAndDropEvent) {
+                super.onExited(event)
+                background = Color.Transparent
+            }
+
+            override fun onEnded(event: DragAndDropEvent) {
+                super.onEnded(event)
+                background = Color.Transparent
+                borderStroke = Color.Transparent
+            }
+        }
+    }
+
+    Scaffold(
+        topBar = {
             ChannelNameBar(
                 channelName = uiState.channelName,
                 channelMembers = uiState.channelMembers,
-                onNavIconPressed = onNavIconPressed
+                onNavIconPressed = onNavIconPressed,
+                scrollBehavior = scrollBehavior,
+            )
+        },
+        // Exclude ime and navigation bar padding so this can be added by the UserInput composable
+        contentWindowInsets = ScaffoldDefaults
+            .contentWindowInsets
+            .exclude(WindowInsets.navigationBars)
+            .exclude(WindowInsets.ime),
+        modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
+    ) { paddingValues ->
+        Column(
+            Modifier.fillMaxSize().padding(paddingValues)
+                .background(color = background)
+                .border(width = 2.dp, color = borderStroke)
+                .dragAndDropTarget(shouldStartDragAndDrop = { event ->
+                    event
+                        .mimeTypes()
+                        .contains(
+                            ClipDescription.MIMETYPE_TEXT_PLAIN
+                        )
+                }, target = dragAndDropCallback)
+        ) {
+            Messages(
+                messages = uiState.messages,
+                navigateToProfile = navigateToProfile,
+                modifier = Modifier.weight(1f),
+                scrollState = scrollState
+            )
+            UserInput(
+                onMessageSent = { content ->
+                    uiState.addMessage(
+                        Message(authorMe, content, timeNow)
+                    )
+                },
+                resetScroll = {
+                    scope.launch {
+                        scrollState.scrollToItem(0)
+                    }
+                },
+                // let this element handle the padding so that the elevation is shown behind the
+                // navigation bar
+                modifier = Modifier.navigationBarsPadding().imePadding()
             )
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChannelNameBar(
     channelName: String,
     channelMembers: Int,
     modifier: Modifier = Modifier,
+    scrollBehavior: TopAppBarScrollBehavior? = null,
     onNavIconPressed: () -> Unit = { }
 ) {
+    var functionalityNotAvailablePopupShown by remember { mutableStateOf(false) }
+    if (functionalityNotAvailablePopupShown) {
+        FunctionalityNotAvailablePopup { functionalityNotAvailablePopupShown = false }
+    }
     JetchatAppBar(
         modifier = modifier,
+        scrollBehavior = scrollBehavior,
         onNavIconPressed = onNavIconPressed,
         title = {
-            Column(
-                modifier = Modifier.weight(1f),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 // Channel name
                 Text(
                     text = channelName,
-                    style = MaterialTheme.typography.subtitle1
+                    style = MaterialTheme.typography.titleMedium
                 )
                 // Number of members
-                ProvideEmphasis(emphasis = EmphasisAmbient.current.medium) { // Broken - b/159017896
-                    Text(
-                        text = stringResource(R.string.members, channelMembers),
-                        style = MaterialTheme.typography.caption,
-                        color = MaterialTheme.colors.onSurface
-                    )
-                }
+                Text(
+                    text = stringResource(R.string.members, channelMembers),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         },
         actions = {
-            ProvideEmphasis(emphasis = EmphasisAmbient.current.medium) {
-                // Search icon
-                Icon(
-                    asset = Icons.Outlined.Search,
-                    modifier = Modifier
-                        .clickable(onClick = {}) // TODO: Show not implemented dialog.
-                        .padding(horizontal = 12.dp, vertical = 16.dp)
-                        .preferredHeight(24.dp)
-                )
-                // Info icon
-                Icon(
-                    asset = Icons.Outlined.Info,
-                    modifier = Modifier
-                        .clickable(onClick = {}) // TODO: Show not implemented dialog.
-                        .padding(horizontal = 12.dp, vertical = 16.dp)
-                        .preferredHeight(24.dp)
-                )
-            }
+            // Search icon
+            Icon(
+                imageVector = Icons.Outlined.Search,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .clickable(onClick = { functionalityNotAvailablePopupShown = true })
+                    .padding(horizontal = 12.dp, vertical = 16.dp)
+                    .height(24.dp),
+                contentDescription = stringResource(id = R.string.search)
+            )
+            // Info icon
+            Icon(
+                imageVector = Icons.Outlined.Info,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .clickable(onClick = { functionalityNotAvailablePopupShown = true })
+                    .padding(horizontal = 12.dp, vertical = 16.dp)
+                    .height(24.dp),
+                contentDescription = stringResource(id = R.string.info)
+            )
         }
     )
 }
+
+const val ConversationTestTag = "ConversationTestTag"
 
 @Composable
 fun Messages(
     messages: List<Message>,
     navigateToProfile: (String) -> Unit,
-    scrollState: ScrollState,
+    scrollState: LazyListState,
     modifier: Modifier = Modifier
 ) {
-    Stack(modifier = modifier) {
+    val scope = rememberCoroutineScope()
+    Box(modifier = modifier) {
 
-        val a11yLabel = stringResource(R.string.conversation_desc)
-        ScrollableColumn(
-            scrollState = scrollState,
-            reverseScrollDirection = true,
+        val authorMe = stringResource(id = R.string.author_me)
+        LazyColumn(
+            reverseLayout = true,
+            state = scrollState,
             modifier = Modifier
-                .semantics { accessibilityLabel = a11yLabel }
-                .fillMaxWidth()
+                .testTag(ConversationTestTag)
+                .fillMaxSize()
         ) {
-            val authorMe = stringResource(id = R.string.author_me)
-            Spacer(modifier = Modifier.preferredHeight(64.dp))
-            messages.forEachIndexed { index, content ->
+            for (index in messages.indices) {
                 val prevAuthor = messages.getOrNull(index - 1)?.author
                 val nextAuthor = messages.getOrNull(index + 1)?.author
+                val content = messages[index]
                 val isFirstMessageByAuthor = prevAuthor != content.author
                 val isLastMessageByAuthor = nextAuthor != content.author
 
                 // Hardcode day dividers for simplicity
-                if (index == 0) {
-                    DayHeader("20 Aug")
-                } else if (index == 4) {
-                    DayHeader("Today")
+                if (index == messages.size - 1) {
+                    item {
+                        DayHeader("20 Aug")
+                    }
+                } else if (index == 2) {
+                    item {
+                        DayHeader("Today")
+                    }
                 }
 
-                Message(
-                    onAuthorClick = {
-                        navigateToProfile(content.author)
-                    },
-                    msg = content,
-                    isUserMe = content.author == authorMe,
-                    isFirstMessageByAuthor = isFirstMessageByAuthor,
-                    isLastMessageByAuthor = isLastMessageByAuthor
-                )
+                item {
+                    Message(
+                        onAuthorClick = { name -> navigateToProfile(name) },
+                        msg = content,
+                        isUserMe = content.author == authorMe,
+                        isFirstMessageByAuthor = isFirstMessageByAuthor,
+                        isLastMessageByAuthor = isLastMessageByAuthor
+                    )
+                }
             }
         }
         // Jump to bottom button shows up when user scrolls past a threshold.
         // Convert to pixels:
-        val jumpThreshold = with(DensityAmbient.current) {
+        val jumpThreshold = with(LocalDensity.current) {
             JumpToBottomThreshold.toPx()
         }
 
-        // Apply the threshold:
-        val jumpToBottomButtonEnabled = scrollState.value > jumpThreshold
+        // Show the button if the first visible item is not the first one or if the offset is
+        // greater than the threshold.
+        val jumpToBottomButtonEnabled by remember {
+            derivedStateOf {
+                scrollState.firstVisibleItemIndex != 0 ||
+                    scrollState.firstVisibleItemScrollOffset > jumpThreshold
+            }
+        }
 
         JumpToBottom(
             // Only show if the scroller is not at the bottom
             enabled = jumpToBottomButtonEnabled,
             onClicked = {
-                scrollState.smoothScrollTo(BottomScrollState)
+                scope.launch {
+                    scrollState.animateScrollToItem(0)
+                }
             },
             modifier = Modifier.align(Alignment.BottomCenter)
         )
@@ -235,48 +356,45 @@ fun Messages(
 
 @Composable
 fun Message(
-    onAuthorClick: () -> Unit,
+    onAuthorClick: (String) -> Unit,
     msg: Message,
     isUserMe: Boolean,
     isFirstMessageByAuthor: Boolean,
     isLastMessageByAuthor: Boolean
 ) {
-    // TODO: get image from msg.author
-    val image = if (isUserMe) {
-        imageResource(id = R.drawable.ali)
-    } else {
-        imageResource(id = R.drawable.someone_else)
-    }
     val borderColor = if (isUserMe) {
-        MaterialTheme.colors.primary
+        MaterialTheme.colorScheme.primary
     } else {
-        MaterialTheme.colors.secondary
+        MaterialTheme.colorScheme.tertiary
     }
 
-    val spaceBetweenAuthors = if (isFirstMessageByAuthor) Modifier.padding(top = 8.dp) else Modifier
+    val spaceBetweenAuthors = if (isLastMessageByAuthor) Modifier.padding(top = 8.dp) else Modifier
     Row(modifier = spaceBetweenAuthors) {
-        if (isFirstMessageByAuthor) {
+        if (isLastMessageByAuthor) {
             // Avatar
             Image(
                 modifier = Modifier
-                    .clickable(onClick = onAuthorClick)
+                    .clickable(onClick = { onAuthorClick(msg.author) })
                     .padding(horizontal = 16.dp)
-                    .preferredSize(42.dp)
+                    .size(42.dp)
                     .border(1.5.dp, borderColor, CircleShape)
-                    .border(3.dp, MaterialTheme.colors.surface, CircleShape)
+                    .border(3.dp, MaterialTheme.colorScheme.surface, CircleShape)
                     .clip(CircleShape)
                     .align(Alignment.Top),
-                asset = image,
-                contentScale = ContentScale.Crop
+                painter = painterResource(id = msg.authorImage),
+                contentScale = ContentScale.Crop,
+                contentDescription = null,
             )
         } else {
             // Space under avatar
-            Spacer(modifier = Modifier.preferredWidth(74.dp))
+            Spacer(modifier = Modifier.width(74.dp))
         }
         AuthorAndTextMessage(
             msg = msg,
+            isUserMe = isUserMe,
             isFirstMessageByAuthor = isFirstMessageByAuthor,
             isLastMessageByAuthor = isLastMessageByAuthor,
+            authorClicked = onAuthorClick,
             modifier = Modifier
                 .padding(end = 16.dp)
                 .weight(1f)
@@ -287,104 +405,114 @@ fun Message(
 @Composable
 fun AuthorAndTextMessage(
     msg: Message,
+    isUserMe: Boolean,
     isFirstMessageByAuthor: Boolean,
     isLastMessageByAuthor: Boolean,
+    authorClicked: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) {
-        if (isFirstMessageByAuthor) {
+        if (isLastMessageByAuthor) {
             AuthorNameTimestamp(msg)
         }
-        ChatItemBubble(msg, isLastMessageByAuthor)
-        if (isLastMessageByAuthor) {
+        ChatItemBubble(msg, isUserMe, authorClicked = authorClicked)
+        if (isFirstMessageByAuthor) {
             // Last bubble before next author
-            Spacer(modifier = Modifier.preferredHeight(8.dp))
+            Spacer(modifier = Modifier.height(8.dp))
         } else {
             // Between bubbles
-            Spacer(modifier = Modifier.preferredHeight(4.dp))
+            Spacer(modifier = Modifier.height(4.dp))
         }
     }
 }
 
 @Composable
 private fun AuthorNameTimestamp(msg: Message) {
-    Row {
-        ProvideEmphasis(emphasis = EmphasisAmbient.current.high) {
-            Text(
-                text = msg.author,
-                style = MaterialTheme.typography.subtitle1,
-                modifier = Modifier
-                    .alignWithSiblings(LastBaseline)
-                    .relativePaddingFrom(LastBaseline, after = 8.dp) // Space to 1st bubble
-            )
-        }
-        Spacer(modifier = Modifier.preferredWidth(8.dp))
-        ProvideEmphasis(emphasis = EmphasisAmbient.current.medium) {
-            Text(
-                text = msg.timestamp,
-                style = MaterialTheme.typography.caption,
-                modifier = Modifier.alignWithSiblings(LastBaseline)
-            )
-        }
+    // Combine author and timestamp for a11y.
+    Row(modifier = Modifier.semantics(mergeDescendants = true) {}) {
+        Text(
+            text = msg.author,
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier
+                .alignBy(LastBaseline)
+                .paddingFrom(LastBaseline, after = 8.dp) // Space to 1st bubble
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = msg.timestamp,
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.alignBy(LastBaseline),
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
-private val ChatBubbleShape = RoundedCornerShape(0.dp, 8.dp, 8.dp, 0.dp)
-private val LastChatBubbleShape = RoundedCornerShape(0.dp, 8.dp, 8.dp, 8.dp)
+private val ChatBubbleShape = RoundedCornerShape(4.dp, 20.dp, 20.dp, 20.dp)
 
 @Composable
 fun DayHeader(dayString: String) {
-    Row(modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp).preferredHeight(16.dp)) {
+    Row(
+        modifier = Modifier
+            .padding(vertical = 8.dp, horizontal = 16.dp)
+            .height(16.dp)
+    ) {
         DayHeaderLine()
-        ProvideEmphasis(emphasis = EmphasisAmbient.current.medium) {
-            Text(
-                text = dayString,
-                modifier = Modifier.padding(horizontal = 16.dp),
-                style = MaterialTheme.typography.overline
-            )
-        }
+        Text(
+            text = dayString,
+            modifier = Modifier.padding(horizontal = 16.dp),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
         DayHeaderLine()
     }
 }
 
 @Composable
-private fun DayHeaderLine() {
+private fun RowScope.DayHeaderLine() {
     Divider(
-        modifier = Modifier.weight(1f).align(Alignment.CenterVertically),
-        color = MaterialTheme.colors.onSurface.copy(alpha = 0.12f)
+        modifier = Modifier
+            .weight(1f)
+            .align(Alignment.CenterVertically),
+        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
     )
 }
 
 @Composable
 fun ChatItemBubble(
     message: Message,
-    lastMessageByAuthor: Boolean
+    isUserMe: Boolean,
+    authorClicked: (String) -> Unit
 ) {
 
-    val backgroundBubbleColor =
-        if (MaterialTheme.colors.isLight) {
-            Color(0xFFF5F5F5)
-        } else {
-            MaterialTheme.colors.elevatedSurface(2.dp)
-        }
+    val backgroundBubbleColor = if (isUserMe) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.surfaceVariant
+    }
 
-    val bubbleShape = if (lastMessageByAuthor) LastChatBubbleShape else ChatBubbleShape
     Column {
-        Surface(color = backgroundBubbleColor, shape = bubbleShape) {
-            ProvideEmphasis(emphasis = EmphasisAmbient.current.high) {
-                ClickableMessage(
-                    message = message
-                )
-            }
+        Surface(
+            color = backgroundBubbleColor,
+            shape = ChatBubbleShape
+        ) {
+            ClickableMessage(
+                message = message,
+                isUserMe = isUserMe,
+                authorClicked = authorClicked
+            )
         }
 
         message.image?.let {
             Spacer(modifier = Modifier.height(4.dp))
-            Surface(color = backgroundBubbleColor, shape = bubbleShape) {
+            Surface(
+                color = backgroundBubbleColor,
+                shape = ChatBubbleShape
+            ) {
                 Image(
-                    asset = imageResource(it),
+                    painter = painterResource(it),
                     contentScale = ContentScale.Fit,
-                    modifier = Modifier.preferredSize(160.dp)
+                    modifier = Modifier.size(160.dp),
+                    contentDescription = stringResource(id = R.string.attached_image)
                 )
             }
         }
@@ -392,15 +520,22 @@ fun ChatItemBubble(
 }
 
 @Composable
-fun ClickableMessage(message: Message) {
-    val uriHandler = UriHandlerAmbient.current
+fun ClickableMessage(
+    message: Message,
+    isUserMe: Boolean,
+    authorClicked: (String) -> Unit
+) {
+    val uriHandler = LocalUriHandler.current
 
-    val styledMessage = messageFormatter(text = message.content)
+    val styledMessage = messageFormatter(
+        text = message.content,
+        primary = isUserMe
+    )
 
     ClickableText(
         text = styledMessage,
-        style = MaterialTheme.typography.body1,
-        modifier = Modifier.padding(8.dp),
+        style = MaterialTheme.typography.bodyLarge.copy(color = LocalContentColor.current),
+        modifier = Modifier.padding(16.dp),
         onClick = {
             styledMessage
                 .getStringAnnotations(start = it, end = it)
@@ -408,8 +543,7 @@ fun ClickableMessage(message: Message) {
                 ?.let { annotation ->
                     when (annotation.tag) {
                         SymbolAnnotationType.LINK.name -> uriHandler.openUri(annotation.item)
-                        // TODO(yrezgui): Open profile screen when click PERSON tag
-                        //  (e.g. @aliconors)
+                        SymbolAnnotationType.PERSON.name -> authorClicked(annotation.item)
                         else -> Unit
                     }
                 }
@@ -430,7 +564,7 @@ fun ConversationPreview() {
 
 @Preview
 @Composable
-fun channelBarPrev() {
+fun ChannelBarPrev() {
     JetchatTheme {
         ChannelNameBar(channelName = "composers", channelMembers = 52)
     }
@@ -443,6 +577,3 @@ fun DayHeaderPrev() {
 }
 
 private val JumpToBottomThreshold = 56.dp
-private val BottomScrollState = 0f
-
-private fun ScrollState.atBottom(): Boolean = value == BottomScrollState

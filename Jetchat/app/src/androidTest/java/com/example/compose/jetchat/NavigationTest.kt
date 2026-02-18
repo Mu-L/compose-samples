@@ -16,21 +16,19 @@
 
 package com.example.compose.jetchat
 
-import android.view.View
-import androidx.activity.ComponentActivity
-import androidx.compose.runtime.Providers
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.navigation.NavController
-import androidx.navigation.Navigation
+import androidx.navigation.findNavController
 import androidx.test.espresso.Espresso
-import androidx.ui.test.assertIsDisplayed
-import androidx.ui.test.createAndroidComposeRule
-import androidx.ui.test.onNodeWithText
-import com.example.compose.jetchat.conversation.BackPressedDispatcherAmbient
-import com.example.compose.jetchat.conversation.ConversationContent
-import com.example.compose.jetchat.data.exampleUiState
-import com.example.compose.jetchat.theme.JetchatTheme
 import org.junit.Assert.assertEquals
-import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
@@ -40,58 +38,71 @@ import org.junit.Test
 class NavigationTest {
 
     @get:Rule
-    val composeTestRule = createAndroidComposeRule<NavActivity>(disableTransitions = true)
-
-    // Note that keeping these references is only safe if the activity is not recreated.
-    // See: https://issuetracker.google.com/160862278
-    private lateinit var navController: NavController
-    private lateinit var activity: ComponentActivity
-
-    @Before
-    fun setUp() {
-        composeTestRule.activityRule.scenario.onActivity { newActivity: NavActivity ->
-            // Store a reference to the activity. Don't do this if the activity is recreated!
-            activity = newActivity
-            val navHostFragment: View = newActivity.findViewById(R.id.nav_host_fragment)
-            // Store a reference to the navigation controller.
-            navController = Navigation.findNavController(navHostFragment)
-        }
-
-        // Start the app
-        composeTestRule.setContent {
-            Providers(BackPressedDispatcherAmbient provides activity) {
-                JetchatTheme {
-                    ConversationContent(
-                        uiState = exampleUiState,
-                        navigateToProfile = { },
-                        onNavIconPressed = { }
-                    )
-                }
-            }
-        }
-    }
+    val composeTestRule = createAndroidComposeRule<NavActivity>()
 
     @Test
     fun app_launches() {
         // Check app launches at the correct destination
-        assertEquals(navController.currentDestination?.id, R.id.nav_home)
+        assertEquals(getNavController().currentDestination?.id, R.id.nav_home)
     }
 
     @Test
     fun profileScreen_back_conversationScreen() {
-        // Navigate to profile
-        composeTestRule.runOnUiThread {
-            navController.navigate(R.id.nav_profile)
-        }
+        val navController = getNavController()
+        // Navigate to profile        \
+        navigateToProfile("Taylor Brooks")
         // Check profile is displayed
         assertEquals(navController.currentDestination?.id, R.id.nav_profile)
         // Extra UI check
-        composeTestRule.onNodeWithText(activity.getString(R.string.textfield_hint)).assertIsDisplayed()
+        composeTestRule
+            .onNodeWithText(composeTestRule.activity.getString(R.string.display_name))
+            .assertIsDisplayed()
 
         // Press back
         Espresso.pressBack()
 
         // Check that we're home
         assertEquals(navController.currentDestination?.id, R.id.nav_home)
+    }
+
+    /**
+     * Regression test for https://github.com/android/compose-samples/issues/670
+     */
+    @Test
+    fun drawer_conversationScreen_backstackPopUp() {
+        navigateToProfile("Ali Conors (you)")
+        navigateToHome()
+        navigateToProfile("Taylor Brooks")
+        navigateToHome()
+
+        // Chewie, we're home
+        assertEquals(getNavController().currentDestination?.id, R.id.nav_home)
+    }
+
+    private fun navigateToProfile(name: String) {
+        composeTestRule.onNodeWithContentDescription(
+            composeTestRule.activity.getString(R.string.navigation_drawer_open)
+        ).performClick()
+
+        composeTestRule.onNode(hasText(name) and isInDrawer()).performClick()
+    }
+
+    private fun isInDrawer() = hasAnyAncestor(isDrawer())
+
+    private fun isDrawer() = SemanticsMatcher.expectValue(
+        SemanticsProperties.PaneTitle,
+        composeTestRule.activity.getString(androidx.compose.ui.R.string.navigation_menu)
+    )
+
+    private fun navigateToHome() {
+        composeTestRule.onNodeWithContentDescription(
+            composeTestRule.activity.getString(R.string.navigation_drawer_open)
+        ).performClick()
+
+        composeTestRule.onNode(hasText("composers") and isInDrawer()).performClick()
+    }
+
+    private fun getNavController(): NavController {
+        return composeTestRule.activity.findNavController(R.id.nav_host_fragment)
     }
 }

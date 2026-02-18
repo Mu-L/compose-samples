@@ -17,109 +17,101 @@
 package com.example.jetnews.ui.home
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.Text
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.preferredHeight
-import androidx.compose.material.EmphasisAmbient
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.ProvideEmphasis
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.ContextAmbient
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.ui.tooling.preview.Preview
-import com.example.jetnews.data.posts.impl.getPostsWithImagesLoaded
-import com.example.jetnews.data.posts.impl.post2
+import com.example.jetnews.R
 import com.example.jetnews.data.posts.impl.posts
 import com.example.jetnews.model.Post
-import com.example.jetnews.ui.ThemedPreview
+import com.example.jetnews.ui.theme.JetnewsTheme
+import com.example.jetnews.utils.CompletePreviews
 
 @Composable
 fun PostCardTop(post: Post, modifier: Modifier = Modifier) {
     // TUTORIAL CONTENT STARTS HERE
     val typography = MaterialTheme.typography
-    Column(modifier = modifier.fillMaxWidth().padding(16.dp)) {
-        post.image?.let { image ->
-            val imageModifier = Modifier
-                .heightIn(min = 180.dp)
-                .fillMaxWidth()
-                .clip(shape = MaterialTheme.shapes.medium)
-            Image(image, modifier = imageModifier, contentScale = ContentScale.Crop)
-        }
-        Spacer(Modifier.preferredHeight(16.dp))
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+    ) {
+        val imageModifier = Modifier
+            .heightIn(min = 180.dp)
+            .fillMaxWidth()
+            .clip(shape = MaterialTheme.shapes.large)
+        Image(
+            painter = painterResource(post.imageId),
+            contentDescription = null, // decorative
+            modifier = imageModifier,
+            contentScale = ContentScale.Crop
+        )
+        Spacer(Modifier.height(16.dp))
 
-        val emphasisLevels = EmphasisAmbient.current
-        ProvideEmphasis(emphasisLevels.high) {
-            Text(
-                text = post.title,
-                style = typography.h6
-            )
-            Text(
-                text = post.metadata.author.name,
-                style = typography.body2
-            )
-        }
-        ProvideEmphasis(emphasisLevels.medium) {
-            Text(
-                text = "${post.metadata.date} - ${post.metadata.readTimeMinutes} min read",
-                style = typography.body2
-            )
-        }
+        Text(
+            text = post.title,
+            style = typography.titleLarge,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+        Text(
+            text = post.metadata.author.name,
+            style = typography.labelLarge,
+            modifier = Modifier.padding(bottom = 4.dp)
+        )
+        Text(
+            text = stringResource(
+                id = R.string.home_post_min_read,
+                formatArgs = arrayOf(
+                    post.metadata.date,
+                    post.metadata.readTimeMinutes
+                )
+            ),
+            style = typography.bodySmall
+        )
     }
 }
 // TUTORIAL CONTENT ENDS HERE
 
-// Preview section
-
-@Preview("Default colors")
+/**
+ * Preview of the [PostCardTop] composable. Fake data is passed into the composable.
+ *
+ * Learn more about Preview features in the [documentation](https://d.android.com/jetpack/compose/tooling#preview)
+ */
+@Preview
 @Composable
-fun TutorialPreview() {
-    TutorialPreviewTemplate()
-}
-
-@Preview("Dark theme")
-@Composable
-fun TutorialPreviewDark() {
-    TutorialPreviewTemplate(darkTheme = true)
-}
-
-@Preview("Font scaling 1.5", fontScale = 1.5f)
-@Composable
-fun TutorialPreviewFontscale() {
-    TutorialPreviewTemplate()
-}
-
-@Composable
-fun TutorialPreviewTemplate(
-    darkTheme: Boolean = false
-) {
-    val context = ContextAmbient.current
-    val previewPosts = getPostsWithImagesLoaded(posts.subList(1, 2), context.resources)
-    val post = previewPosts[0]
-
-    ThemedPreview(darkTheme) {
-        PostCardTop(post)
+fun PostCardTopPreview() {
+    JetnewsTheme {
+        Surface {
+            PostCardTop(posts.highlightedPost)
+        }
     }
 }
 
-@Preview("Post card top")
+/*
+ * These previews will only show up on Android Studio Dolphin and later.
+ * They showcase a feature called Multipreview Annotations.
+ *
+ * Read more in the [documentation](https://d.android.com/jetpack/compose/tooling#preview-multipreview)
+*/
+@CompletePreviews
 @Composable
-fun PreviewPostCardTop() {
-    ThemedPreview {
-        PostCardTop(post = post2)
-    }
-}
-
-@Preview("Post card top dark theme")
-@Composable
-fun PreviewPostCardTopDark() {
-    ThemedPreview(darkTheme = true) {
-        PostCardTop(post = post2)
+fun PostCardTopPreviews() {
+    JetnewsTheme {
+        Surface {
+            PostCardTop(posts.highlightedPost)
+        }
     }
 }

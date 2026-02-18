@@ -14,62 +14,66 @@
  * limitations under the License.
  */
 
+@file:OptIn(ExperimentalMaterial3Api::class)
+
 package com.example.compose.jetchat.components
 
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.Text
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.Divider
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.TopAppBar
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.ui.tooling.preview.Preview
 import com.example.compose.jetchat.R
 import com.example.compose.jetchat.theme.JetchatTheme
-import com.example.compose.jetchat.theme.elevatedSurface
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun JetchatAppBar(
     modifier: Modifier = Modifier,
+    scrollBehavior: TopAppBarScrollBehavior? = null,
     onNavIconPressed: () -> Unit = { },
     title: @Composable () -> Unit,
     actions: @Composable RowScope.() -> Unit = {}
 ) {
-    Column {
-        // This bar needs to be translucent but, if the backgroundColor in TopAppBar is not
-        // opaque, the elevation is ignored. We need to manually calculate the elevated surface
-        // color for dark mode:
-        val backgroundColor = MaterialTheme.colors.elevatedSurface(3.dp)
-        TopAppBar(
-            modifier = modifier,
-            backgroundColor = backgroundColor.copy(alpha = 0.95f),
-            elevation = 0.dp, // No shadow needed
-            contentColor = MaterialTheme.colors.onSurface,
-            actions = actions,
-            title = title,
-            navigationIcon = {
-                Image(
-                    asset = vectorResource(id = R.drawable.ic_jetchat),
-                    modifier = Modifier
-                        .clickable(onClick = onNavIconPressed)
-                        .padding(horizontal = 16.dp)
-                )
-            }
-        )
-        Divider()
-    }
+    CenterAlignedTopAppBar(
+        modifier = modifier,
+        actions = actions,
+        title = title,
+        scrollBehavior = scrollBehavior,
+        navigationIcon = {
+            JetchatIcon(
+                contentDescription = stringResource(id = R.string.navigation_drawer_open),
+                modifier = Modifier
+                    .size(64.dp)
+                    .clickable(onClick = onNavIconPressed)
+                    .padding(16.dp)
+            )
+        }
+    )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Preview
 @Composable
 fun JetchatAppBarPreview() {
     JetchatTheme {
+        JetchatAppBar(title = { Text("Preview!") })
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Preview
+@Composable
+fun JetchatAppBarPreviewDark() {
+    JetchatTheme(isDarkTheme = true) {
         JetchatAppBar(title = { Text("Preview!") })
     }
 }

@@ -16,47 +16,43 @@
 
 package com.example.jetsnack.ui.home.search
 
-import androidx.compose.foundation.BaseTextField
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.Icon
-import androidx.compose.foundation.Text
-import androidx.compose.foundation.contentColor
-import androidx.compose.foundation.currentTextStyle
+import android.content.res.Configuration
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.Stack
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.preferredHeight
-import androidx.compose.foundation.layout.preferredSize
-import androidx.compose.foundation.layout.preferredWidth
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentSize
-import androidx.compose.material.CircularProgressIndicator
-import androidx.compose.material.IconButton
-import androidx.compose.material.MaterialTheme
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.launchInComposition
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.ExperimentalFocus
-import androidx.compose.ui.focus.isFocused
-import androidx.compose.ui.focusObserver
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.ui.tooling.preview.Preview
 import com.example.jetsnack.R
 import com.example.jetsnack.model.Filter
 import com.example.jetsnack.model.SearchCategoryCollection
@@ -67,11 +63,10 @@ import com.example.jetsnack.model.SnackRepo
 import com.example.jetsnack.ui.components.JetsnackDivider
 import com.example.jetsnack.ui.components.JetsnackSurface
 import com.example.jetsnack.ui.theme.JetsnackTheme
-import com.example.jetsnack.ui.utils.statusBarsPadding
 
 @Composable
 fun Search(
-    onSnackClick: (Long) -> Unit,
+    onSnackClick: (Long, String) -> Unit,
     modifier: Modifier = Modifier,
     state: SearchState = rememberSearchState()
 ) {
@@ -88,7 +83,7 @@ fun Search(
             )
             JetsnackDivider()
 
-            launchInComposition(state.query.text) {
+            LaunchedEffect(state.query.text) {
                 state.searching = true
                 state.searchResults = SearchRepo.search(state.query.text)
                 state.searching = false
@@ -97,13 +92,16 @@ fun Search(
                 SearchDisplay.Categories -> SearchCategories(state.categories)
                 SearchDisplay.Suggestions -> SearchSuggestions(
                     suggestions = state.suggestions,
-                    onSuggestionSelect = { suggestion -> state.query = TextFieldValue(suggestion) }
+                    onSuggestionSelect = { suggestion ->
+                        state.query = TextFieldValue(suggestion)
+                    }
                 )
+
                 SearchDisplay.Results -> SearchResults(
                     state.searchResults,
-                    state.filters,
                     onSnackClick
                 )
+
                 SearchDisplay.NoResults -> NoResults(state.query.text)
             }
         }
@@ -163,7 +161,6 @@ class SearchState(
         }
 }
 
-@OptIn(ExperimentalFoundationApi::class, ExperimentalFocus::class)
 @Composable
 private fun SearchBar(
     query: TextFieldValue,
@@ -180,10 +177,10 @@ private fun SearchBar(
         shape = MaterialTheme.shapes.small,
         modifier = modifier
             .fillMaxWidth()
-            .preferredHeight(56.dp)
+            .height(56.dp)
             .padding(horizontal = 24.dp, vertical = 8.dp)
     ) {
-        Stack(Modifier.fillMaxSize()) {
+        Box(Modifier.fillMaxSize()) {
             if (query.text.isEmpty()) {
                 SearchHint()
             }
@@ -196,21 +193,18 @@ private fun SearchBar(
                 if (searchFocused) {
                     IconButton(onClick = onClearQuery) {
                         Icon(
-                            asset = Icons.Outlined.ArrowBack,
-                            tint = JetsnackTheme.colors.iconPrimary
+                            imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                            tint = JetsnackTheme.colors.iconPrimary,
+                            contentDescription = stringResource(R.string.label_back)
                         )
                     }
                 }
-                BaseTextField(
+                BasicTextField(
                     value = query,
                     onValueChange = onQueryChange,
-                    textStyle = currentTextStyle().copy(color = contentColor()),
-                    imeAction = ImeAction.Search,
-                    onImeActionPerformed = { /* todo */ },
-                    cursorColor = JetsnackTheme.colors.textPrimary,
                     modifier = Modifier
                         .weight(1f)
-                        .focusObserver {
+                        .onFocusChanged {
                             onSearchFocusChange(it.isFocused)
                         }
                 )
@@ -219,10 +213,10 @@ private fun SearchBar(
                         color = JetsnackTheme.colors.iconPrimary,
                         modifier = Modifier
                             .padding(horizontal = 6.dp)
-                            .preferredSize(36.dp)
+                            .size(36.dp)
                     )
                 } else {
-                    Spacer(Modifier.preferredWidth(IconSize)) // balance arrow icon
+                    Spacer(Modifier.width(IconSize)) // balance arrow icon
                 }
             }
         }
@@ -235,13 +229,16 @@ private val IconSize = 48.dp
 private fun SearchHint() {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxSize().wrapContentSize()
+        modifier = Modifier
+            .fillMaxSize()
+            .wrapContentSize()
     ) {
         Icon(
-            asset = Icons.Outlined.Search,
-            tint = JetsnackTheme.colors.textHelp
+            imageVector = Icons.Outlined.Search,
+            tint = JetsnackTheme.colors.textHelp,
+            contentDescription = stringResource(R.string.label_search)
         )
-        Spacer(Modifier.preferredWidth(8.dp))
+        Spacer(Modifier.width(8.dp))
         Text(
             text = stringResource(R.string.search_jetsnack),
             color = JetsnackTheme.colors.textHelp
@@ -249,27 +246,12 @@ private fun SearchHint() {
     }
 }
 
-@Preview("Search Bar")
+@Preview("default")
+@Preview("dark theme", uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Preview("large font", fontScale = 2f)
 @Composable
 private fun SearchBarPreview() {
     JetsnackTheme {
-        JetsnackSurface {
-            SearchBar(
-                query = TextFieldValue(""),
-                onQueryChange = { },
-                searchFocused = false,
-                onSearchFocusChange = { },
-                onClearQuery = { },
-                searching = false
-            )
-        }
-    }
-}
-
-@Preview("Search Bar • Dark")
-@Composable
-private fun SearchBarDarkPreview() {
-    JetsnackTheme(darkTheme = true) {
         JetsnackSurface {
             SearchBar(
                 query = TextFieldValue(""),

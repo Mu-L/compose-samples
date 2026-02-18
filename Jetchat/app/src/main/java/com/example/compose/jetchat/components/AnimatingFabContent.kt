@@ -17,17 +17,17 @@
 package com.example.compose.jetchat.components
 
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.FloatPropKey
 import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.transitionDefinition
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.transition
-import androidx.compose.foundation.Box
+import androidx.compose.animation.core.updateTransition
+import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import androidx.compose.ui.Layout
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawOpacity
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.util.lerp
 import kotlin.math.roundToInt
 
@@ -43,17 +43,60 @@ fun AnimatingFabContent(
     extended: Boolean = true
 ) {
     val currentState = if (extended) ExpandableFabStates.Extended else ExpandableFabStates.Collapsed
-    val transitionDefinition = remember { fabTransitionDefinition() }
-    val transition = transition(
-        definition = transitionDefinition,
-        toState = currentState
-    )
-    // Using functions instead of Floats here can improve performance, preventing recompositions.
+    val transition = updateTransition(currentState, "fab_transition")
+
+    val textOpacity by transition.animateFloat(
+        transitionSpec = {
+            if (targetState == ExpandableFabStates.Collapsed) {
+                tween(
+                    easing = LinearEasing,
+                    durationMillis = (transitionDuration / 12f * 5).roundToInt() // 5 / 12 frames
+                )
+            } else {
+                tween(
+                    easing = LinearEasing,
+                    delayMillis = (transitionDuration / 3f).roundToInt(), // 4 / 12 frames
+                    durationMillis = (transitionDuration / 12f * 5).roundToInt() // 5 / 12 frames
+                )
+            }
+        },
+        label = "fab_text_opacity"
+    ) { state ->
+        if (state == ExpandableFabStates.Collapsed) {
+            0f
+        } else {
+            1f
+        }
+    }
+    val fabWidthFactor by transition.animateFloat(
+        transitionSpec = {
+            if (targetState == ExpandableFabStates.Collapsed) {
+                tween(
+                    easing = FastOutSlowInEasing,
+                    durationMillis = transitionDuration
+                )
+            } else {
+                tween(
+                    easing = FastOutSlowInEasing,
+                    durationMillis = transitionDuration
+                )
+            }
+        },
+        label = "fab_width_factor"
+    ) { state ->
+        if (state == ExpandableFabStates.Collapsed) {
+            0f
+        } else {
+            1f
+        }
+    }
+    // Deferring reads using lambdas instead of Floats here can improve performance,
+    // preventing recompositions.
     IconAndTextRow(
         icon,
         text,
-        { transition[TextOpacity] },
-        { transition[FabWidthFactor] },
+        { textOpacity },
+        { fabWidthFactor },
         modifier = modifier
     )
 }
@@ -62,15 +105,15 @@ fun AnimatingFabContent(
 private fun IconAndTextRow(
     icon: @Composable () -> Unit,
     text: @Composable () -> Unit,
-    opacityProgress: () -> Float, // Functions instead of Floats, to slightly improve performance
+    opacityProgress: () -> Float, // Lambdas instead of Floats, to defer read
     widthProgress: () -> Float,
     modifier: Modifier
 ) {
     Layout(
         modifier = modifier,
-        children = {
+        content = {
             icon()
-            Box(modifier = Modifier.drawOpacity(opacityProgress())) {
+            Box(modifier = Modifier.graphicsLayer { alpha = opacityProgress() }) {
                 text()
             }
         }
@@ -106,47 +149,6 @@ private fun IconAndTextRow(
     }
 }
 
-private val FabWidthFactor = FloatPropKey()
-private val TextOpacity = FloatPropKey()
-
 private enum class ExpandableFabStates { Collapsed, Extended }
 
-@Suppress("RemoveExplicitTypeArguments")
-private fun fabTransitionDefinition(duration: Int = 200) =
-    transitionDefinition<ExpandableFabStates> {
-        state(ExpandableFabStates.Collapsed) {
-            this[FabWidthFactor] = 0f
-            this[TextOpacity] = 0f
-        }
-        state(ExpandableFabStates.Extended) {
-            this[FabWidthFactor] = 1f
-            this[TextOpacity] = 1f
-        }
-        transition(
-            fromState = ExpandableFabStates.Extended,
-            toState = ExpandableFabStates.Collapsed
-        ) {
-            TextOpacity using tween<Float>(
-                easing = LinearEasing,
-                durationMillis = (duration / 12f * 5).roundToInt() // 5 out of 12 frames
-            )
-            FabWidthFactor using tween<Float>(
-                easing = FastOutSlowInEasing,
-                durationMillis = duration
-            )
-        }
-        transition(
-            fromState = ExpandableFabStates.Collapsed,
-            toState = ExpandableFabStates.Extended
-        ) {
-            TextOpacity using tween<Float>(
-                easing = LinearEasing,
-                delayMillis = (duration / 3f).roundToInt(), // 4 out of 12 frames
-                durationMillis = (duration / 12f * 5).roundToInt() // 5 out of 12 frames
-            )
-            FabWidthFactor using tween<Float>(
-                easing = FastOutSlowInEasing,
-                durationMillis = duration
-            )
-        }
-    }
+private const val transitionDuration = 200

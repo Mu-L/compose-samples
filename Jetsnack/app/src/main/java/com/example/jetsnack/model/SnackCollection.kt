@@ -17,6 +17,7 @@
 package com.example.jetsnack.model
 
 import androidx.compose.runtime.Immutable
+import kotlin.random.Random
 
 @Immutable
 data class SnackCollection(
@@ -35,47 +36,59 @@ object SnackRepo {
     fun getSnacks(): List<SnackCollection> = snackCollections
     fun getSnack(snackId: Long) = snacks.find { it.id == snackId }!!
     fun getRelated(@Suppress("UNUSED_PARAMETER") snackId: Long) = related
+    fun getInspiredByCart() = inspiredByCart
     fun getFilters() = filters
+    fun getPriceFilters() = priceFilters
+    fun getCart() = cart
+    fun getSortFilters() = sortFilters
+    fun getCategoryFilters() = categoryFilters
+    fun getSortDefault() = sortDefault
+    fun getLifeStyleFilters() = lifeStyleFilters
 }
 
 /**
  * Static data
  */
 
-val tastyTreats = SnackCollection(
+private val tastyTreats = SnackCollection(
     id = 1L,
     name = "Android's picks",
     type = CollectionType.Highlight,
     snacks = snacks.subList(0, 13)
 )
 
-val popular = SnackCollection(
-    id = 2L,
+private val popular = SnackCollection(
+    id = Random.nextLong(),
     name = "Popular on Jetsnack",
     snacks = snacks.subList(14, 19)
 )
 
-val wfhFavs = tastyTreats.copy(
-    id = 3L,
+private val wfhFavs = tastyTreats.copy(
+    id = Random.nextLong(),
     name = "WFH favourites"
 )
 
-val newlyAdded = popular.copy(
-    id = 4L,
+private val newlyAdded = popular.copy(
+    id = Random.nextLong(),
     name = "Newly Added"
 )
 
-val exclusive = tastyTreats.copy(
-    id = 5L,
+private val exclusive = tastyTreats.copy(
+    id = Random.nextLong(),
     name = "Only on Jetsnack"
 )
 
-val also = tastyTreats.copy(
-    id = 6L,
+private val also = tastyTreats.copy(
+    id = Random.nextLong(),
     name = "Customers also bought"
 )
 
-val snackCollections = listOf(
+private val inspiredByCart = tastyTreats.copy(
+    id = Random.nextLong(),
+    name = "Inspired by your cart"
+)
+
+private val snackCollections = listOf(
     tastyTreats,
     popular,
     wfhFavs,
@@ -83,7 +96,19 @@ val snackCollections = listOf(
     exclusive
 )
 
-val related = listOf(
-    also,
-    popular
+private val related = listOf(
+    also.copy(id = Random.nextLong()),
+    popular.copy(id = Random.nextLong())
+)
+
+private val cart = listOf(
+    OrderLine(snacks[4], 2),
+    OrderLine(snacks[6], 3),
+    OrderLine(snacks[8], 1)
+)
+
+@Immutable
+data class OrderLine(
+    val snack: Snack,
+    val count: Int
 )

@@ -2,7 +2,8 @@
 
 Jetsnack is a sample snack ordering app built with [Jetpack Compose][compose].
 
-To try out these sample apps, you need to use the latest Canary version of Android Studio 4.2.
+To try out this sample app, use the latest stable version
+of [Android Studio](https://developer.android.com/studio).
 You can clone this repository or import the
 project from Android Studio following the steps
 [here](https://developer.android.com/jetpack/compose/setup#sample).
@@ -13,7 +14,9 @@ This sample showcases:
 * Custom layout
 * Animation
 
-<img src="screenshots/jetsnack.gif"/>
+## Screenshots
+
+<img src="screenshots/screenshots.png"/>
 
 ### Status: 🚧 In progress 🚧
 
@@ -50,8 +53,10 @@ Jetsnack utilizes custom [`Layout`](https://developer.android.com/reference/kotl
 ## Data
 Domain types are modelled in the [model package](app/src/main/java/com/example/jetsnack/model), each containing static sample data exposed using fake `Repo`s objects.
 
-Imagery is sourced from [Unsplash](https://unsplash.com/) and loaded using [coil-accompanist][coil-accompanist].
+Imagery is sourced from [Unsplash](https://unsplash.com/) and loaded using the [Coil][coil] library.
 
+## Baseline Profiles
+For [Baseline profiles](https://developer.android.com/topic/performance/baselineprofiles), see the [compose-latest](https://github.com/android/compose-samples/tree/compose-latest/Jetsnack) branch.
 
 ## License
 
@@ -72,4 +77,4 @@ limitations under the License.
 ```
 
 [compose]: https://developer.android.com/jetpack/compose
-[coil-accompanist]: https://github.com/chrisbanes/accompanist
+[coil]: https://coil-kt.github.io/coil/

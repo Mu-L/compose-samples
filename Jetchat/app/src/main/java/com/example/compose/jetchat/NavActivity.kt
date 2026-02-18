@@ -17,72 +17,101 @@
 package com.example.compose.jetchat
 
 import android.os.Bundle
-import android.view.Menu
+import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.GravityCompat
-import androidx.drawerlayout.widget.DrawerLayout
-import androidx.navigation.findNavController
-import androidx.navigation.ui.AppBarConfiguration
-import androidx.navigation.ui.navigateUp
-import androidx.navigation.ui.setupWithNavController
-import com.google.android.material.navigation.NavigationView
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.material3.DrawerValue.Closed
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.rememberDrawerState
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.viewinterop.AndroidViewBinding
+import androidx.core.os.bundleOf
+import androidx.core.view.ViewCompat
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavController
+import androidx.navigation.fragment.NavHostFragment
+import com.example.compose.jetchat.components.JetchatDrawer
+import com.example.compose.jetchat.databinding.ContentMainBinding
+import kotlinx.coroutines.launch
 
 /**
- * Main activity for the app. Shows a drawer and a toolbar rendered with traditional Views, for now.
+ * Main activity for the app.
  */
 class NavActivity : AppCompatActivity() {
+    private val viewModel: MainViewModel by viewModels()
 
-    private lateinit var appBarConfiguration: AppBarConfiguration
-    private lateinit var drawerLayout: DrawerLayout
-
+    @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        ViewCompat.setOnApplyWindowInsetsListener(window.decorView) { _, insets -> insets }
 
-        drawerLayout = findViewById(R.id.drawer_layout)
-        val navView: NavigationView = findViewById(R.id.nav_view)
-        val navController = findNavController(R.id.nav_host_fragment)
-        // Passing each menu ID as a set of Ids because each
-        // menu should be considered as top level destinations.
-        appBarConfiguration = AppBarConfiguration(
-            setOf(
-                R.id.nav_home,
-                R.id.nav_profile
-            ),
-            drawerLayout
+        setContentView(
+            ComposeView(this).apply {
+                consumeWindowInsets = false
+                setContent {
+                    val drawerState = rememberDrawerState(initialValue = Closed)
+                    val drawerOpen by viewModel.drawerShouldBeOpened
+                        .collectAsStateWithLifecycle()
+
+                    var selectedMenu by remember { mutableStateOf("composers") }
+                    if (drawerOpen) {
+                        // Open drawer and reset state in VM.
+                        LaunchedEffect(Unit) {
+                            // wrap in try-finally to handle interruption whiles opening drawer
+                            try {
+                                drawerState.open()
+                            } finally {
+                                viewModel.resetOpenDrawerAction()
+                            }
+                        }
+                    }
+
+                    val scope = rememberCoroutineScope()
+
+                    JetchatDrawer(
+                        drawerState = drawerState,
+                        selectedMenu = selectedMenu,
+                        onChatClicked = {
+                            findNavController().popBackStack(R.id.nav_home, false)
+                            scope.launch {
+                                drawerState.close()
+                            }
+                            selectedMenu = it
+                        },
+                        onProfileClicked = {
+                            val bundle = bundleOf("userId" to it)
+                            findNavController().navigate(R.id.nav_profile, bundle)
+                            scope.launch {
+                                drawerState.close()
+                            }
+                            selectedMenu = it
+                        }
+                    ) {
+                        AndroidViewBinding(ContentMainBinding::inflate)
+                    }
+                }
+            }
         )
-        navView.setupWithNavController(navController)
-    }
-
-    override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        menuInflater.inflate(R.menu.main, menu)
-        return true
     }
 
     override fun onSupportNavigateUp(): Boolean {
-        val navController = findNavController(R.id.nav_host_fragment)
-        return navController.navigateUp(appBarConfiguration) || super.onSupportNavigateUp()
+        return findNavController().navigateUp() || super.onSupportNavigateUp()
     }
 
     /**
-     * Back closes drawer if open.
+     * See https://issuetracker.google.com/142847973
      */
-    override fun onBackPressed() {
-        if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
-            drawerLayout.closeDrawer(GravityCompat.START)
-        } else {
-            super.onBackPressed()
-        }
-    }
-
-    /**
-     * Opens the drawer if present.
-     *
-     * ]TODO: Replace with compose Scaffold.
-     */
-    fun openDrawer() {
-        val drawer = findViewById<DrawerLayout>(R.id.drawer_layout)
-        drawer?.openDrawer(GravityCompat.START)
+    private fun findNavController(): NavController {
+        val navHostFragment =
+            supportFragmentManager.findFragmentById(R.id.nav_host_fragment) as NavHostFragment
+        return navHostFragment.navController
     }
 }

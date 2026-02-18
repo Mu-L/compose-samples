@@ -16,75 +16,95 @@
 
 package com.example.jetnews.ui.theme
 
-import androidx.compose.material.Typography
+import androidx.compose.material3.Typography
+import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.font.font
-import androidx.compose.ui.text.font.fontFamily
+import androidx.compose.ui.text.style.LineBreak
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.sp
 import com.example.jetnews.R
 
-private val Montserrat = fontFamily(
-    font(R.font.montserrat_regular),
-    font(R.font.montserrat_medium, FontWeight.W500),
-    font(R.font.montserrat_semibold, FontWeight.W600)
+private val Montserrat = FontFamily(
+    Font(R.font.montserrat_regular),
+    Font(R.font.montserrat_medium, FontWeight.W500)
 )
 
-private val Domine = fontFamily(
-    fonts = listOf(
-        font(R.font.domine_regular),
-        font(R.font.domine_bold, FontWeight.Bold)
+@Suppress("DEPRECATION")
+val defaultTextStyle = TextStyle(
+    fontFamily = Montserrat,
+    platformStyle = PlatformTextStyle(
+        includeFontPadding = false
+    ),
+    lineHeightStyle = LineHeightStyle(
+        alignment = LineHeightStyle.Alignment.Center,
+        trim = LineHeightStyle.Trim.None
     )
 )
 
 val JetnewsTypography = Typography(
-    h4 = TextStyle(
-        fontFamily = Montserrat,
-        fontWeight = FontWeight.W600,
-        fontSize = 30.sp
+    displayLarge = defaultTextStyle.copy(
+        fontSize = 57.sp, lineHeight = 64.sp, letterSpacing = (-0.25).sp
     ),
-    h5 = TextStyle(
-        fontFamily = Montserrat,
-        fontWeight = FontWeight.W600,
-        fontSize = 24.sp
+    displayMedium = defaultTextStyle.copy(
+        fontSize = 45.sp, lineHeight = 52.sp, letterSpacing = 0.sp
     ),
-    h6 = TextStyle(
-        fontFamily = Montserrat,
-        fontWeight = FontWeight.W600,
-        fontSize = 20.sp
+    displaySmall = defaultTextStyle.copy(
+        fontSize = 36.sp, lineHeight = 44.sp, letterSpacing = 0.sp
     ),
-    subtitle1 = TextStyle(
-        fontFamily = Montserrat,
-        fontWeight = FontWeight.W600,
-        fontSize = 16.sp
+    headlineLarge = defaultTextStyle.copy(
+        fontSize = 32.sp, lineHeight = 40.sp, letterSpacing = 0.sp, lineBreak = LineBreak.Heading
     ),
-    subtitle2 = TextStyle(
-        fontFamily = Montserrat,
-        fontWeight = FontWeight.W500,
-        fontSize = 14.sp
+    headlineMedium = defaultTextStyle.copy(
+        fontSize = 28.sp, lineHeight = 36.sp, letterSpacing = 0.sp, lineBreak = LineBreak.Heading
     ),
-    body1 = TextStyle(
-        fontFamily = Domine,
-        fontWeight = FontWeight.Normal,
-        fontSize = 16.sp
+    headlineSmall = defaultTextStyle.copy(
+        fontSize = 24.sp, lineHeight = 32.sp, letterSpacing = 0.sp, lineBreak = LineBreak.Heading
     ),
-    body2 = TextStyle(
-        fontFamily = Montserrat,
-        fontSize = 14.sp
+    titleLarge = defaultTextStyle.copy(
+        fontSize = 22.sp, lineHeight = 28.sp, letterSpacing = 0.sp, lineBreak = LineBreak.Heading
     ),
-    button = TextStyle(
-        fontFamily = Montserrat,
-        fontWeight = FontWeight.W500,
-        fontSize = 14.sp
+    titleMedium = defaultTextStyle.copy(
+        fontSize = 16.sp,
+        lineHeight = 24.sp,
+        letterSpacing = 0.15.sp,
+        fontWeight = FontWeight.Medium,
+        lineBreak = LineBreak.Heading
     ),
-    caption = TextStyle(
-        fontFamily = Montserrat,
-        fontWeight = FontWeight.Normal,
-        fontSize = 12.sp
+    titleSmall = defaultTextStyle.copy(
+        fontSize = 14.sp,
+        lineHeight = 20.sp,
+        letterSpacing = 0.1.sp,
+        fontWeight = FontWeight.Medium,
+        lineBreak = LineBreak.Heading
     ),
-    overline = TextStyle(
-        fontFamily = Montserrat,
-        fontWeight = FontWeight.W500,
-        fontSize = 12.sp
-    )
+    labelLarge = defaultTextStyle.copy(
+        fontSize = 14.sp, lineHeight = 20.sp, letterSpacing = 0.1.sp, fontWeight = FontWeight.Medium
+    ),
+    labelMedium = defaultTextStyle.copy(
+        fontSize = 12.sp, lineHeight = 16.sp, letterSpacing = 0.5.sp, fontWeight = FontWeight.Medium
+    ),
+    labelSmall = defaultTextStyle.copy(
+        fontSize = 11.sp, lineHeight = 16.sp, letterSpacing = 0.5.sp, fontWeight = FontWeight.Medium
+    ),
+    bodyLarge = defaultTextStyle.copy(
+        fontSize = 16.sp,
+        lineHeight = 24.sp,
+        letterSpacing = 0.5.sp,
+        lineBreak = LineBreak.Paragraph
+    ),
+    bodyMedium = defaultTextStyle.copy(
+        fontSize = 14.sp,
+        lineHeight = 20.sp,
+        letterSpacing = 0.25.sp,
+        lineBreak = LineBreak.Paragraph
+    ),
+    bodySmall = defaultTextStyle.copy(
+        fontSize = 12.sp,
+        lineHeight = 16.sp,
+        letterSpacing = 0.4.sp,
+        lineBreak = LineBreak.Paragraph
+    ),
 )

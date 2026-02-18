@@ -17,27 +17,24 @@
 package com.example.jetnews.ui
 
 import android.os.Bundle
-import androidx.activity.viewModels
-import androidx.appcompat.app.AppCompatActivity
-import androidx.compose.ui.platform.setContent
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
+import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import com.example.jetnews.JetnewsApplication
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : ComponentActivity() {
 
-    val navigationViewModel by viewModels<NavigationViewModel>()
-
+    @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 
         val appContainer = (application as JetnewsApplication).container
         setContent {
-            JetnewsApp(appContainer, navigationViewModel)
-        }
-    }
-
-    override fun onBackPressed() {
-        if (!navigationViewModel.onBack()) {
-            super.onBackPressed()
+            val widthSizeClass = calculateWindowSizeClass(this).widthSizeClass
+            JetnewsApp(appContainer, widthSizeClass)
         }
     }
 }
